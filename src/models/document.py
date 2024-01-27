@@ -20,7 +20,5 @@ class DocumentReadShort(DocumentBase):
     id: int
     content_access_date: datetime.datetime
 
-class DocumentRead(DocumentBase):
-    id: int
+class DocumentRead(DocumentReadShort):
     contents: str
-    content_access_date: datetime.datetime

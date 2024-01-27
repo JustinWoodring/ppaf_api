@@ -2,3 +2,7 @@ fastapi
 pydantic
 sqlmodel
 langchain
+passlib
+python-jose
+python-multipart
+bcrypt
