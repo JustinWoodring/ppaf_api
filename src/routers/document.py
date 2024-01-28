@@ -1,12 +1,13 @@
 from typing import Annotated, List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlmodel import Session, select
 
 from langchain_community.document_loaders import WebBaseLoader
 from src.infrastructure.auth import get_current_active_user
 
 from src.models.user import User
+from src.tasks.single_document_analysis.base import perform_base_analysis
 
 from ..infrastructure.dependencies import get_db
 from ..models.document import *
@@ -26,7 +27,7 @@ async def get_user_documents(user: Annotated[User, Depends(get_current_active_us
     return documents
 
 @router.post("/", response_model=DocumentRead)
-async def create_user_document(*, user: Annotated[User, Depends(get_current_active_user)], db: Session = Depends(get_db), document: DocumentCreate):
+async def create_user_document(*, user: Annotated[User, Depends(get_current_active_user)], db: Session = Depends(get_db),  background_tasks: BackgroundTasks, document: DocumentCreate):
     loader = WebBaseLoader(document.url)
     content = loader.load()
 
@@ -41,4 +42,5 @@ async def create_user_document(*, user: Annotated[User, Depends(get_current_acti
     db.add(db_document)
     db.commit()
     db.refresh(db_document)
+    background_tasks.add_task(perform_base_analysis, db_document.id)
     return db_document
