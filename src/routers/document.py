@@ -5,9 +5,10 @@ from sqlmodel import Session, select
 
 from langchain_community.document_loaders import WebBaseLoader
 from src.infrastructure.auth import get_current_active_user
+from src.models.analysis import SingleDocumentAnalysis, SingleDocumentAnalysisRead, SingleDocumentAnalysisReadShort
 
 from src.models.user import User
-from src.tasks.single_document_analysis.base import perform_base_analysis
+from src.tasks.single_document_analysis.base import request_base_analysis
 
 from ..infrastructure.dependencies import get_db
 from ..models.document import *
@@ -20,6 +21,11 @@ router = APIRouter(
 async def get_user_document(document_id: int, user: Annotated[User, Depends(get_current_active_user)], db: Session = Depends(get_db)):
     document = db.exec(select(Document).where(Document.user_id==user.id).where(Document.id==document_id)).first()
     return document
+
+@router.get("/{document_id}/analysis", response_model=List[SingleDocumentAnalysisReadShort])
+async def get_user_document_analyses(document_id: int, user: Annotated[User, Depends(get_current_active_user)], db: Session = Depends(get_db)):
+    analyses = db.exec(select(SingleDocumentAnalysis).where(SingleDocumentAnalysis.user_id==user.id).where(SingleDocumentAnalysis.document_id==document_id)).all()
+    return analyses
 
 @router.get("/", response_model=List[DocumentReadShort])
 async def get_user_documents(user: Annotated[User, Depends(get_current_active_user)], db: Session = Depends(get_db)):
@@ -42,5 +48,5 @@ async def create_user_document(*, user: Annotated[User, Depends(get_current_acti
     db.add(db_document)
     db.commit()
     db.refresh(db_document)
-    background_tasks.add_task(perform_base_analysis, db_document.id)
+    background_tasks.add_task(request_base_analysis, db_document.id)
     return db_document

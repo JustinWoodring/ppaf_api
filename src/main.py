@@ -1,7 +1,7 @@
 from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from src.routers import auth, user
+from src.routers import analysis, auth, user
 
 from .infrastructure.startup import on_startup
 from .infrastructure.middleware import configure_middleware
@@ -14,6 +14,7 @@ app = configure_middleware(FastAPI())
 
 app.add_event_handler("startup", on_startup)
 app.include_router(document.router)
+app.include_router(analysis.router)
 app.include_router(user.router)
 app.include_router(auth.router)
 app.mount("/", StaticFiles(directory="../ppaf_client/build"), name="static")
