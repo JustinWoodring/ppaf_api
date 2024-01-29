@@ -5,10 +5,8 @@ from fastapi.middleware import Middleware
 
 ## CORS
 origins = [
-    "http://localhost.tiangolo.com",
-    "https://localhost.tiangolo.com",
     "http://localhost",
-    "http://localhost:8080",
+    "http://localhost:5173",
 ]
 
 def configure_middleware(app: FastAPI):
