@@ -22,7 +22,7 @@ async def get_user_document(document_id: int, user: Annotated[User, Depends(get_
     document = db.exec(select(Document).where(Document.user_id==user.id).where(Document.id==document_id)).first()
     return document
 
-@router.get("/{document_id}/analysis", response_model=List[SingleDocumentAnalysisReadShort])
+@router.get("/{document_id}/analyses", response_model=List[SingleDocumentAnalysisReadShort])
 async def get_user_document_analyses(document_id: int, user: Annotated[User, Depends(get_current_active_user)], db: Session = Depends(get_db)):
     analyses = db.exec(select(SingleDocumentAnalysis).where(SingleDocumentAnalysis.user_id==user.id).where(SingleDocumentAnalysis.document_id==document_id)).all()
     return analyses
