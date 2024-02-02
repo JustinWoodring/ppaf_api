@@ -1,7 +1,25 @@
+import json
+import langchain
 from sqlmodel import Session, select
 from src.infrastructure.dependencies import get_db
 from src.models.document import Document
 from src.models.analysis import SingleDocumentAnalysis, SingleDocumentAnalysisKinds, SingleDocumentAnalysisStates
+
+from typing import List
+from langchain.text_splitter import CharacterTextSplitter
+from langchain_core.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
+from langchain.output_parsers import ResponseSchema, StructuredOutputParser
+from langchain_community.document_loaders import WebBaseLoader
+from langchain.chains.combine_documents.stuff import StuffDocumentsChain
+from langchain.chains.llm import LLMChain
+from langchain.chains import MapReduceDocumentsChain, ReduceDocumentsChain
+import re
+
+from src.tasks.single_document_analysis.base_llm import text_splitter, summarizer_chain, final_scope_chain, final_score_chain
+
+from langchain.docstore.document import Document as LangchainDoc
+
 
 def reset_and_run_broken_base_analyses():
     db : Session = next(get_db())
@@ -60,12 +78,32 @@ def run_base_analysis(db_analysis : SingleDocumentAnalysis):
     failure = False
     content = ""
 
-    while(failure_count>5):
+    while(failure_count<5):
         failure = False
         try:
-            ###TODO LLM CODE HERE
-            pass
-        except Exception:
+            document = db.exec(select(Document).where(Document.id==db_analysis.document_id)).first()
+
+            docs =  [LangchainDoc(page_content=document.contents, metadata={"source": "local"})]
+
+            split_docs = text_splitter.split_documents(docs)
+
+            print("length",len(split_docs))
+            result_text = summarizer_chain.run(split_docs)
+            summary_scopes = final_scope_chain.invoke({"summary": result_text})
+
+            print(summary_scopes)
+
+            summary_score = final_score_chain.invoke({"summary": result_text})
+
+            value = {
+                "summary": result_text,
+                "scopes": summary_scopes['text']['scopes'],
+                "score": summary_score['text']['score']
+            }
+
+            content=json.dumps(value)
+        except Exception as e:
+            print("Error ", e)
             failure = True
             failure_count+=1
 

@@ -8,3 +8,4 @@ python-multipart
 bcrypt
 uvicorn
 bs4
+langchain_openai
