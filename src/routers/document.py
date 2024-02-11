@@ -5,10 +5,10 @@ from sqlmodel import Session, select
 
 from langchain_community.document_loaders import WebBaseLoader
 from src.infrastructure.auth import get_current_active_user
-from src.models.analysis import SingleDocumentAnalysis, SingleDocumentAnalysisRead, SingleDocumentAnalysisReadShort
+from src.models.analysis import SingleDocumentAnalysis, SingleDocumentAnalysisRead, SingleDocumentAnalysisReadShort, SingleDocumentAnalysisStates
 
 from src.models.user import User
-from src.tasks.single_document_analysis.base import request_base_analysis
+from src.tasks.single_document_analysis.base import request_base_analysis, run_base_analysis
 
 from ..infrastructure.dependencies import get_db
 from ..models.document import *
@@ -50,3 +50,28 @@ async def create_user_document(*, user: Annotated[User, Depends(get_current_acti
     db.refresh(db_document)
     background_tasks.add_task(request_base_analysis, db_document.id)
     return db_document
+
+@router.post("/{document_id}/refresh")
+async def refresh_document(*, document_id: int, user: Annotated[User, Depends(get_current_active_user)], db: Session = Depends(get_db), background_tasks: BackgroundTasks):
+    document = db.exec(select(Document).where(Document.id==document_id)).first()
+
+    if document is not None:
+        loader = WebBaseLoader(document.url)
+        content = loader.load()
+
+        document.contents = content[0].page_content
+        db.commit()
+        db.refresh(document)
+
+        old_jobs = db.exec(
+            select(SingleDocumentAnalysis)
+        ).all()
+
+        for job in old_jobs:
+            job.state = SingleDocumentAnalysisStates.PENDING
+
+        db.commit()
+
+        for job in old_jobs:
+            if SingleDocumentAnalysis.kind=="BASE":
+                background_tasks.add_task(run_base_analysis(job))
