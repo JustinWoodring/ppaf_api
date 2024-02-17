@@ -101,3 +101,23 @@ Please return a score representing the privacy friendliness of this privacy poli
 )
 
 final_score_chain = LLMChain(prompt=prompt2,llm=llm,output_parser=parser2)
+
+# Final Color Chain
+response_schemas3 = [
+    ResponseSchema(name="color", description="A hexadecimal color."),
+]
+
+parser3 = StructuredOutputParser.from_response_schemas(response_schemas3)
+
+prompt3 = PromptTemplate(
+    template="""You are a helpful, honest assistant. 
+    
+Here is a summary of a privacy policy:\n\n{summary}\n\nPlease strictly adhere to the following format instructions. {format_instructions}. 
+
+Please return a color associated with the branding of the entity who owns this privacy policy.""",
+    input_variables=["summary"],
+    partial_variables={"format_instructions": parser3.get_format_instructions()},
+    validate_template=False
+)
+
+final_color_chain = LLMChain(prompt=prompt3,llm=llm,output_parser=parser3)

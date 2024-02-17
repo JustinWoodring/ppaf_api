@@ -5,7 +5,7 @@ from sqlmodel import SQLModel, Field
 
 class SingleDocumentAnalysisKinds():
     BASE: str = "BASE"
-    GPDR: str = "GDPR"
+    GDPR: str = "GDPR"
     COPPA: str = "COPPA"
     HIPPA: str = "HIPPA"
     FERPA: str = "FERPA"

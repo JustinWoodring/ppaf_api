@@ -14,19 +14,19 @@ from langchain_community.document_loaders import WebBaseLoader
 from langchain.chains.combine_documents.stuff import StuffDocumentsChain
 from langchain.chains.llm import LLMChain
 from langchain.chains import MapReduceDocumentsChain, ReduceDocumentsChain
-import random
+import re
 
-from src.tasks.single_document_analysis.base_llm import text_splitter, summarizer_chain, final_scope_chain, final_score_chain, final_color_chain
+from src.tasks.single_document_analysis.gdpr_llm import text_splitter, gdpr_summarizer_chain, final_inconsistency_chain
 
 from langchain.docstore.document import Document as LangchainDoc
 
 
-def reset_and_run_broken_base_analyses():
+def reset_and_run_broken_gdpr_analyses():
     db : Session = next(get_db())
 
     broken_jobs = db.exec(
         select(SingleDocumentAnalysis)
-        .where(SingleDocumentAnalysis.kind == SingleDocumentAnalysisKinds.BASE)
+        .where(SingleDocumentAnalysis.kind == SingleDocumentAnalysisKinds.GDPR)
         .where(SingleDocumentAnalysis.state == SingleDocumentAnalysisStates.IN_PROGRESS)
     ).all()
 
@@ -36,9 +36,9 @@ def reset_and_run_broken_base_analyses():
     db.commit()
 
     for job in broken_jobs:
-        run_base_analysis(job)
+        run_gdpr_analysis(job)
 
-def request_base_analysis(document_id):
+def request_gdpr_analysis(document_id):
     db : Session = next(get_db())
 
     document = db.exec(select(Document).where(Document.id==document_id)).first()
@@ -46,7 +46,7 @@ def request_base_analysis(document_id):
     # Create Pending Analysis
     db_analysis = SingleDocumentAnalysis(
         document_id=document_id,
-        kind=SingleDocumentAnalysisKinds.BASE,
+        kind=SingleDocumentAnalysisKinds.GDPR,
         user_id=document.user_id,
         state=SingleDocumentAnalysisStates.PENDING
     )
@@ -56,9 +56,9 @@ def request_base_analysis(document_id):
     db.commit()
     db.refresh(db_analysis)
 
-    run_base_analysis(db_analysis)
+    run_gdpr_analysis(db_analysis)
 
-def run_base_analysis(db_analysis : SingleDocumentAnalysis):
+def run_gdpr_analysis(db_analysis : SingleDocumentAnalysis):
     db : Session = next(get_db())
 
     db_analysis = db.exec(
@@ -88,32 +88,14 @@ def run_base_analysis(db_analysis : SingleDocumentAnalysis):
             split_docs = text_splitter.split_documents(docs)
 
             print("length",len(split_docs))
-            result_text = summarizer_chain.run(split_docs)
-            summary_scopes = final_scope_chain.invoke({"summary": result_text})
+            result_text = gdpr_summarizer_chain.run(split_docs)
+            summary_inconsistencies = final_inconsistency_chain.invoke({"summary": result_text})
 
-            print(summary_scopes)
-
-            summary_score = final_score_chain.invoke({"summary": result_text})
-
-            # Generating a random number in between 0 and 2^24
-            color = random.randrange(0, 2**24)
-            
-            # Converting that number from base-10 (decimal) to base-16 (hexadecimal)
-            hex_color = hex(color)
-            
-            std_color = "#" + hex_color[2:]
-            
-            summary_color = {"text":{"color": std_color}}
-            try:
-                summary_color = final_color_chain.invoke({"summary": result_text})
-            except Exception as e:
-                pass
+            print(summary_inconsistencies)
 
             value = {
                 "summary": result_text,
-                "scopes": summary_scopes['text']['scopes'],
-                "score": summary_score['text']['score'],
-                "color": summary_color['text']['color']
+                "inconsistencies": summary_inconsistencies['text']['inconsistencies'],
             }
 
             content=json.dumps(value)

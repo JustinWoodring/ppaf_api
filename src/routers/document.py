@@ -1,6 +1,7 @@
 from typing import Annotated, List
 
 from fastapi import APIRouter, BackgroundTasks, Depends
+from sqlalchemy import delete
 from sqlmodel import Session, select
 
 from langchain_community.document_loaders import WebBaseLoader
@@ -9,6 +10,7 @@ from src.models.analysis import SingleDocumentAnalysis, SingleDocumentAnalysisRe
 
 from src.models.user import User
 from src.tasks.single_document_analysis.base import request_base_analysis, run_base_analysis
+from src.tasks.single_document_analysis.gdpr import request_gdpr_analysis, run_gdpr_analysis
 
 from ..infrastructure.dependencies import get_db
 from ..models.document import *
@@ -49,11 +51,12 @@ async def create_user_document(*, user: Annotated[User, Depends(get_current_acti
     db.commit()
     db.refresh(db_document)
     background_tasks.add_task(request_base_analysis, db_document.id)
+    background_tasks.add_task(request_gdpr_analysis, db_document.id)
     return db_document
 
 @router.post("/{document_id}/refresh")
 async def refresh_document(*, document_id: int, user: Annotated[User, Depends(get_current_active_user)], db: Session = Depends(get_db), background_tasks: BackgroundTasks):
-    document = db.exec(select(Document).where(Document.id==document_id)).first()
+    document = db.exec(select(Document).where(Document.id==document_id).where(Document.user_id==user.id)).first()
 
     if document is not None:
         loader = WebBaseLoader(document.url)
@@ -74,4 +77,12 @@ async def refresh_document(*, document_id: int, user: Annotated[User, Depends(ge
 
         for job in old_jobs:
             if SingleDocumentAnalysis.kind=="BASE":
-                background_tasks.add_task(run_base_analysis(job))
+                background_tasks.add_task(run_base_analysis, job)
+            if SingleDocumentAnalysis.kind=="GDPR":
+                background_tasks.add_task(run_gdpr_analysis, job)
+
+@router.delete("/{document_id}")
+async def delete_user_document(*, document_id: int, user: Annotated[User, Depends(get_current_active_user)], db: Session = Depends(get_db)):
+    db.exec(delete(Document).where(Document.id==document_id).where(Document.user_id==user.id))
+    db.exec(delete(SingleDocumentAnalysis).where(SingleDocumentAnalysis.document_id==document_id).where(SingleDocumentAnalysis.user_id==user.id))
+    db.commit()
