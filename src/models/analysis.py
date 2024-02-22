@@ -37,3 +37,39 @@ class SingleDocumentAnalysisReadShort(SingleDocumentAnalysisBase):
 
 class SingleDocumentAnalysisRead(SingleDocumentAnalysisReadShort):
     contents: Optional[str]
+
+class MultipleDocumentAnalysisKinds():
+    WRT: str = "WRT"
+        
+class MultipleDocumentAnalysisStates():
+    PENDING: str = "Pending"
+    IN_PROGRESS: str = "In Progress"
+    COMPLETE: str = "Complete"
+    FAILED: str = "Failed"
+
+class MultipleDocumentAnalysisBase(SQLModel):
+    document_id_primary: int = Field(foreign_key="document.id")
+    document_id_secondary: int = Field(foreign_key="document.id", exclude=document_id_primary)
+    kind: str
+
+class MultipleDocumentAnalysisCreate(MultipleDocumentAnalysisBase):
+    pass
+
+class MultipleDocumentAnalysis(MultipleDocumentAnalysisBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    contents: Optional[str] = Field(default=None)
+    state: str
+    analysis_date: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
+
+class MultipleDocumentAnalysisReadShort(MultipleDocumentAnalysisBase):
+    document_id_primary: int
+    document_id_secondary: int
+    id: int
+    state: str
+    analysis_date: datetime.datetime
+
+class MultipleDocumentAnalysisRead(MultipleDocumentAnalysisReadShort):
+    document_id_primary: int
+    document_id_secondary: int
+    contents: Optional[str]
