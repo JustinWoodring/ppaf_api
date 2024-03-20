@@ -5,6 +5,9 @@ from sqlalchemy import delete
 from sqlmodel import Session, select
 
 from langchain_community.document_loaders import WebBaseLoader
+from src.tasks.single_document_analysis.coppa import request_coppa_analysis, run_coppa_analysis
+from src.tasks.single_document_analysis.ferpa import request_ferpa_analysis, run_ferpa_analysis
+from src.tasks.single_document_analysis.hipaa import request_hipaa_analysis, run_hipaa_analysis
 from src.infrastructure.auth import get_current_active_user
 from src.models.analysis import SingleDocumentAnalysis, SingleDocumentAnalysisRead, SingleDocumentAnalysisReadShort, SingleDocumentAnalysisStates
 
@@ -52,6 +55,9 @@ async def create_user_document(*, user: Annotated[User, Depends(get_current_acti
     db.refresh(db_document)
     background_tasks.add_task(request_base_analysis, db_document.id)
     background_tasks.add_task(request_gdpr_analysis, db_document.id)
+    background_tasks.add_task(request_coppa_analysis, db_document.id)
+    background_tasks.add_task(request_hipaa_analysis, db_document.id)
+    background_tasks.add_task(request_ferpa_analysis, db_document.id)
     return db_document
 
 @router.post("/{document_id}/refresh")
@@ -80,6 +86,12 @@ async def refresh_document(*, document_id: int, user: Annotated[User, Depends(ge
                 background_tasks.add_task(run_base_analysis, job)
             if SingleDocumentAnalysis.kind=="GDPR":
                 background_tasks.add_task(run_gdpr_analysis, job)
+            if SingleDocumentAnalysis.kind=="COPPA":
+                background_tasks.add_task(run_coppa_analysis, job)
+            if SingleDocumentAnalysis.kind=="FERPA":
+                background_tasks.add_task(run_ferpa_analysis, job)
+            if SingleDocumentAnalysis.kind=="HIPAA":
+                background_tasks.add_task(run_hipaa_analysis, job)
 
 @router.delete("/{document_id}")
 async def delete_user_document(*, document_id: int, user: Annotated[User, Depends(get_current_active_user)], db: Session = Depends(get_db)):
