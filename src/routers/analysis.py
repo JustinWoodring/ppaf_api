@@ -1,6 +1,7 @@
 from typing import Annotated, List
 from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlmodel import Session, select
+from src.tasks.multiple_document_analysis.rev import run_multiple_document_rev_analysis
 from src.tasks.multiple_document_analysis.wrt import run_multiple_document_wrt_analysis
 from src.infrastructure.auth import get_current_active_user
 from src.infrastructure.dependencies import get_db
@@ -39,6 +40,8 @@ async def create_user_multiple_document_analysis(*, user: Annotated[User, Depend
     db.refresh(db_analysis)
     if(db_analysis.kind == MultipleDocumentAnalysisKinds.WRT):
         background_tasks.add_task(run_multiple_document_wrt_analysis, db_analysis)
+    elif(db_analysis.kind == MultipleDocumentAnalysisKinds.REV):
+        background_tasks.add_task(run_multiple_document_rev_analysis, db_analysis)
     return db_analysis
 
 @router.post("/{analysis_id}", response_model=MultipleDocumentAnalysisRead)
