@@ -7,7 +7,7 @@ class SingleDocumentAnalysisKinds():
     BASE: str = "BASE"
     GDPR: str = "GDPR"
     COPPA: str = "COPPA"
-    HIPPA: str = "HIPPA"
+    HIPAA: str = "HIPAA"
     FERPA: str = "FERPA"
         
 class SingleDocumentAnalysisStates():
@@ -40,6 +40,7 @@ class SingleDocumentAnalysisRead(SingleDocumentAnalysisReadShort):
 
 class MultipleDocumentAnalysisKinds():
     WRT: str = "WRT"
+    REV: str = "REV"
         
 class MultipleDocumentAnalysisStates():
     PENDING: str = "Pending"
