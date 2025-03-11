@@ -36,6 +36,7 @@ async def get_user_documents(user: Annotated[User, Depends(get_current_active_us
 
 @router.post("/", response_model=DocumentRead)
 async def create_user_document(*, user: Annotated[User, Depends(get_current_active_user)], db: Session = Depends(get_db),  background_tasks: BackgroundTasks, document: DocumentCreate):
+   # useragent = { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'}
     loader = WebBaseLoader(document.url)
     content = loader.load()
 

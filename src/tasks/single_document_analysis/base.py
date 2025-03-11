@@ -16,7 +16,7 @@ from langchain.chains.llm import LLMChain
 from langchain.chains import MapReduceDocumentsChain, ReduceDocumentsChain
 import random
 
-from src.tasks.single_document_analysis.base_llm import text_splitter, summarizer_chain, final_scope_chain, final_score_chain, final_color_chain
+from src.tasks.single_document_analysis.base_llm import text_splitter, summarizer_chain, shared_map_chain, collected_map_chain, security_map_chain, final_scope_chain, final_score_chain, final_color_chain, final_shared_chain, final_collected_chain, final_security_chain
 
 from langchain.docstore.document import Document as LangchainDoc
 
@@ -89,9 +89,20 @@ def run_base_analysis(db_analysis : SingleDocumentAnalysis):
 
             print("length",len(split_docs))
             result_text = summarizer_chain.run(split_docs)
+            shared_text = shared_map_chain.run(split_docs)
+            collected_text = collected_map_chain.run(split_docs)
+            security_text = security_map_chain.run(split_docs)
+
+            #each scope shared,collected,security
             summary_scopes = final_scope_chain.invoke({"summary": result_text})
+            shared = final_shared_chain.invoke({"summary": shared_text})
+            collected = final_collected_chain.invoke({"summary": collected_text})
+            security = final_security_chain.invoke({"summary": security_text})
 
             print(summary_scopes)
+            print(shared)
+            print(collected)
+            print(security)
 
             summary_score = final_score_chain.invoke({"summary": result_text})
 
@@ -111,7 +122,10 @@ def run_base_analysis(db_analysis : SingleDocumentAnalysis):
 
             value = {
                 "summary": result_text,
-                "scopes": summary_scopes['text']['scopes'],
+                "scopes":summary_scopes['text']['scopes'],
+                "shared": shared['text']['shared'],
+                "collected": collected['text']['collected'],
+                "security": security['text']['security'],
                 "score": summary_score['text']['score'],
                 "color": summary_color['text']['color']
             }
