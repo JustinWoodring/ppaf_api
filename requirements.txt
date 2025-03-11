@@ -9,3 +9,4 @@ bcrypt
 uvicorn
 bs4
 langchain_openai
+langchain_community
